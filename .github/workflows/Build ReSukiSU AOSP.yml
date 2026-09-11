@@ -878,7 +878,7 @@ jobs:
       - name: 📦 Add build name
         run: |
           cd kernel_workspace
-          sudo sed -i "s/-4k/-palaziks-ShiftPorts/g" ./common/arch/arm64/configs/gki_defconfig
+          sudo sed -i "s/-4k/-dkjsks/g" ./common/arch/arm64/configs/gki_defconfig
           sed -i 's/${scm_version}//' ./common/scripts/setlocalversion
           echo "CONFIG_LOCALVERSION_AUTO=n" >> ./common/arch/arm64/configs/gki_defconfig
 
@@ -1039,7 +1039,7 @@ jobs:
           export TG_KERNEL_VERSION="6.6.142"
           export TG_KSU_DISPLAY="ReSukiSU"
           export TG_KSUVER="${{ env.KSUVER }}"
-          export TG_SUFFIX="palaziks-ShiftPorts"
+          export TG_SUFFIX="dkjsks"
           export TG_LTO="${{ github.event.inputs.lto_type }}"
           export TG_BUILD_NUM="${{ github.run_number }}"
           export TG_TIME_NOW="$TIME_NOW"

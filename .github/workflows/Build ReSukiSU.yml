@@ -360,6 +360,10 @@ jobs:
           wait
 
           if [ "${{ github.event.inputs.SUSFS }}" == "true" ]; then
+            # Pin susfs to the last good commit before the 2026-09-12
+            # SUS_KSTAT/SUS_MOUNT refactor (which broke this 6.6 tree).
+            git -C susfs4ksu fetch --depth=1 origin 3f0b811b2e105afd8dc858cd71389090e01f404b
+            git -C susfs4ksu checkout -q FETCH_HEAD
             cp susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
             cp susfs4ksu/kernel_patches/fs/* ./common/fs/
             cp susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
@@ -394,22 +398,6 @@ jobs:
 
             echo "📦 Applying 50_ with --forward (by-design rejects skip cleanly)..."
             patch -p1 --forward < 50_add_susfs_in_gki-android15-6.6.patch || true
-
-            # fs/super.c hunk #1 fails on this tree because trace/hooks/fs.h sits
-            # before thaw_super_locked; re-add the include + extern declarations.
-            if ! grep -q "extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted" ./fs/super.c; then
-              echo "📦 Fixup: adding missing fs/super.c susfs declarations..."
-              sed -i '/#include <linux\/fs_context.h>/a #ifdef CONFIG_KSU_SUSFS\n#include <linux\/susfs_def.h>\n#endif' ./fs/super.c
-              sed -i '/#include <linux\/fs_context.h>/a #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\nextern bool susfs_is_current_ksu_domain(void);\nextern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\n#endif' ./fs/super.c
-            fi
-
-            # fs/stat.c: the refactored SUS_KSTAT branch still uses the pre-6.2
-            # mnt_userns API; this tree uses idmap + 4-arg generic_fillattr.
-            if grep -q "mnt_userns" ./fs/stat.c; then
-              echo "📦 Fixup: converting fs/stat.c SUS_KSTAT branch to idmap API..."
-              sed -i 's/getattr(mnt_userns, path, stat,/getattr(idmap, path, stat,/' ./fs/stat.c
-              sed -i 's/generic_fillattr(mnt_userns, inode, stat)/generic_fillattr(idmap, request_mask, inode, stat)/' ./fs/stat.c
-            fi
 
             # Verify the SUS_MAP guard actually landed (real correctness check, not error-ignoring)
             grep -q "SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file))" fs/proc/task_mmu.c \

@@ -403,6 +403,14 @@ jobs:
               sed -i '/#include <linux\/fs_context.h>/a #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\nextern bool susfs_is_current_ksu_domain(void);\nextern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\n#endif' ./fs/super.c
             fi
 
+            # fs/stat.c: the refactored SUS_KSTAT branch still uses the pre-6.2
+            # mnt_userns API; this tree uses idmap + 4-arg generic_fillattr.
+            if grep -q "mnt_userns" ./fs/stat.c; then
+              echo "📦 Fixup: converting fs/stat.c SUS_KSTAT branch to idmap API..."
+              sed -i 's/getattr(mnt_userns, path, stat,/getattr(idmap, path, stat,/' ./fs/stat.c
+              sed -i 's/generic_fillattr(mnt_userns, inode, stat)/generic_fillattr(idmap, request_mask, inode, stat)/' ./fs/stat.c
+            fi
+
             # Verify the SUS_MAP guard actually landed (real correctness check, not error-ignoring)
             grep -q "SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file))" fs/proc/task_mmu.c \
               || { echo "❌ SUS_MAP guard missing — real failure"; exit 1; }

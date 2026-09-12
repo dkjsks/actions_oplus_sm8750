@@ -399,6 +399,14 @@ jobs:
             echo "📦 Applying 50_ with --forward (by-design rejects skip cleanly)..."
             patch -p1 --forward < 50_add_susfs_in_gki-android15-6.6.patch || true
 
+            # susfs provides its own SELinux hooks, which makes ReSukiSU compile
+            # out its selinux_hide hooks; add the AOSP userdebug (su/adbroot)
+            # filtering to the susfs hooks too.
+            echo "📦 Patching susfs SELinux hooks for AOSP userdebug hiding..."
+            wget -qO /tmp/patch_susfs_userdebug_hide.py \
+              "https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/scripts/patch_susfs_userdebug_hide.py"
+            python3 /tmp/patch_susfs_userdebug_hide.py
+
             # Verify the SUS_MAP guard actually landed (real correctness check, not error-ignoring)
             grep -q "SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file))" fs/proc/task_mmu.c \
               || { echo "❌ SUS_MAP guard missing — real failure"; exit 1; }

@@ -341,7 +341,7 @@ jobs:
         run: |
           cd kernel_workspace/common
           echo "🛠️ Setting up ReSukiSU (main)..."
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s main
+          curl -LSs "https://raw.githubusercontent.com/dkjsks/ReSukiSU/main/kernel/setup.sh" | bash -s main
           cd KernelSU
           KSU_VERSION_COUNT=$(git rev-list --count HEAD)
           export KSUVER=$(expr $KSU_VERSION_COUNT + 37185)
@@ -426,7 +426,7 @@ jobs:
           echo "CONFIG_LD_DEAD_CODE_DATA_ELIMINATION=y" >> "$DEFCONFIG"
       
           # ReSukiSU custom version name (@palaziks) via its format-string config:
-          echo 'CONFIG_KSU_FULL_NAME_FORMAT="v%KSU_VERSION%-%COMMIT_SHA%@palaziks"' >> "$DEFCONFIG"
+          echo 'CONFIG_KSU_FULL_NAME_FORMAT="v%KSU_VERSION%-%COMMIT_SHA%@dkjsks"' >> "$DEFCONFIG"
       
           # SUSFS on => ReSukiSU auto-selects SuSFS Inline hook. Do NOT set CONFIG_KSU_MANUAL_HOOK.
           if [ "${{ github.event.inputs.SUSFS }}" == "true" ]; then
@@ -966,8 +966,8 @@ jobs:
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
             wget https://raw.githubusercontent.com/$GITHUB_REPOSITORY/refs/heads/$GITHUB_REF_NAME/zram.zip || true
           fi
-          AK3_NAME=AnyKernel3_${KSU_TYPENAME}_${{ env.KSUVER }}_6.6.142_palaziks_AOSP-ShiftPorts.zip
-          FULL_VERSION=6.6.142-palaziks_AOSP-ShiftPorts
+          AK3_NAME=AnyKernel3_${KSU_TYPENAME}_${{ env.KSUVER }}_6.6.142_dkjsks.zip
+          FULL_VERSION=6.6.142-dkjsks
           zip -r ../$AK3_NAME ./*
           echo "ak3name=$AK3_NAME" >> $GITHUB_OUTPUT
           
@@ -1137,7 +1137,7 @@ jobs:
                   "  |  ",
                   {"tag": "a", "attrs": {"href": f"https://github.com/{e('TG_REPO')}"}, "children": [f"📦 {e('TG_REPO')}"]},
               ]},
-              {"tag": "p", "children": ["Built by @palaziks"]},
+              {"tag": "p", "children": ["Built by @dkjsks"]},
           ]
 
           data = {
@@ -1232,7 +1232,7 @@ jobs:
 
       - name: Set Environment Variables
         run: |
-          FULL_VERSION=6.6.142-palaziks-ShiftPorts
+          FULL_VERSION=6.6.142-dkjsks
           echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
           TIME="$(TZ='Asia/Shanghai' date +'%y%m%d%H%M%S')"
           TIME_FORM="$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"

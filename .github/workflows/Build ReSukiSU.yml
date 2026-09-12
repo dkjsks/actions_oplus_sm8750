@@ -395,6 +395,14 @@ jobs:
             echo "📦 Applying 50_ with --forward (by-design rejects skip cleanly)..."
             patch -p1 --forward < 50_add_susfs_in_gki-android15-6.6.patch || true
 
+            # fs/super.c hunk #1 fails on this tree because trace/hooks/fs.h sits
+            # before thaw_super_locked; re-add the include + extern declarations.
+            if ! grep -q "susfs_is_sdcard_android_data_not_decrypted" ./fs/super.c; then
+              echo "📦 Fixup: adding missing fs/super.c susfs declarations..."
+              sed -i '/#include <linux\/fs_context.h>/a #ifdef CONFIG_KSU_SUSFS\n#include <linux\/susfs_def.h>\n#endif' ./fs/super.c
+              sed -i '/#include <linux\/fs_context.h>/a #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\nextern bool susfs_is_current_ksu_domain(void);\nextern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\n#endif' ./fs/super.c
+            fi
+
             # Verify the SUS_MAP guard actually landed (real correctness check, not error-ignoring)
             grep -q "SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file))" fs/proc/task_mmu.c \
               || { echo "❌ SUS_MAP guard missing — real failure"; exit 1; }

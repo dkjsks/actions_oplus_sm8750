@@ -397,7 +397,7 @@ jobs:
 
             # fs/super.c hunk #1 fails on this tree because trace/hooks/fs.h sits
             # before thaw_super_locked; re-add the include + extern declarations.
-            if ! grep -q "susfs_is_sdcard_android_data_not_decrypted" ./fs/super.c; then
+            if ! grep -q "extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted" ./fs/super.c; then
               echo "📦 Fixup: adding missing fs/super.c susfs declarations..."
               sed -i '/#include <linux\/fs_context.h>/a #ifdef CONFIG_KSU_SUSFS\n#include <linux\/susfs_def.h>\n#endif' ./fs/super.c
               sed -i '/#include <linux\/fs_context.h>/a #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\nextern bool susfs_is_current_ksu_domain(void);\nextern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\n#endif' ./fs/super.c

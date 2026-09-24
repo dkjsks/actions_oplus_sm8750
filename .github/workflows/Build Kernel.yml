@@ -11,6 +11,8 @@ env:
   KERNEL_VERSION: '6.6'
   KERNEL_NAME: 'android15-8-g29d86c5fc9dd-abogki428889875-4k'
   KERNEL_FULL_VERSION: '6.6.143'
+  KBUILD_BUILD_USER: dkjsks
+  KBUILD_BUILD_HOST: Dorothy
 
 on:
   workflow_dispatch:
@@ -322,8 +324,9 @@ jobs:
         if: inputs.ksu_type == 'ReSukiSU'
         run: |
           cd kernel_workspace/common
-          echo "🛠️ Setting up ReSukiSU (main)..."
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s main
+          echo "🛠️ Setting up ReSukiSU (dkjsks fork)..."
+          git clone https://github.com/dkjsks/ReSukiSU.git KernelSU
+          curl -LSs "https://raw.githubusercontent.com/dkjsks/ReSukiSU/main/kernel/setup.sh" | bash -s main
           cd KernelSU
           KSU_VERSION_COUNT=$(git rev-list --count HEAD)
           export KSUVER=$(expr $KSU_VERSION_COUNT + 37185)
@@ -348,9 +351,9 @@ jobs:
           sed -i 's/-DKSU_VERSION_FULL=[^ ]*//g' "$KBUILD_FILE"
           sed -i '/KSU_VERSION_FULL/d' "$KBUILD_FILE"
           cat >> "$KBUILD_FILE" <<EOF
-          ccflags-y += -DKSU_VERSION_FULL=\"v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@palaziks\"
+          ccflags-y += -DKSU_VERSION_FULL=\"v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@dkjsks\"
           EOF
-          echo "✅ SukiSU $KSUVER (v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@palaziks)"
+          echo "✅ SukiSU $KSUVER (v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@dkjsks)"
 
       - name: ⚡ Setup KernelSU
         if: inputs.ksu_type == 'KernelSU'
@@ -390,6 +393,10 @@ jobs:
           wait
 
           if [ "${{ github.event.inputs.SUSFS }}" == "true" ]; then
+            # Pin susfs to the last good commit before the 2026-09-12
+            # SUS_KSTAT/SUS_MOUNT refactor (which broke this 6.6 tree).
+            git -C susfs4ksu fetch --depth=1 origin 3f0b811b2e105afd8dc858cd71389090e01f404b
+            git -C susfs4ksu checkout -q FETCH_HEAD
             cp susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
             cp susfs4ksu/kernel_patches/fs/* ./common/fs/
             cp susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
@@ -422,6 +429,14 @@ jobs:
 
           echo "📦 Applying 50_ with --forward (by-design rejects skip cleanly)..."
           patch -p1 --forward < 50_add_susfs_in_gki-android15-6.6.patch || true
+
+          # susfs provides its own SELinux hooks, which makes ReSukiSU compile
+          # out its selinux_hide hooks; add the AOSP userdebug (su/adbroot)
+          # filtering to the susfs hooks too.
+          echo "📦 Patching susfs SELinux hooks for AOSP userdebug hiding..."
+          wget -qO /tmp/patch_susfs_userdebug_hide.py \
+            "https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/scripts/patch_susfs_userdebug_hide.py"
+          python3 /tmp/patch_susfs_userdebug_hide.py
 
           grep -q "SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file))" fs/proc/task_mmu.c \
             || { echo "❌ SUS_MAP guard missing — real failure"; exit 1; }
@@ -475,7 +490,7 @@ jobs:
           echo "CONFIG_KSU=y" >> "$DEFCONFIG"
           case "${{ inputs.ksu_type }}" in
             "ReSukiSU")
-              echo 'CONFIG_KSU_FULL_NAME_FORMAT="v%KSU_VERSION%-%COMMIT_SHA%@palaziks"' >> "$DEFCONFIG"
+              echo 'CONFIG_KSU_FULL_NAME_FORMAT="v%KSU_VERSION%-%COMMIT_SHA%@dkjsks"' >> "$DEFCONFIG"
               ;;
             "SukiSU Ultra")
               echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$DEFCONFIG"
@@ -913,7 +928,7 @@ jobs:
       - name: 📦 Add build name
         run: |
           cd kernel_workspace
-          sudo sed -i "s/-4k/-palaziks-ShiftPorts/g" ./common/arch/arm64/configs/gki_defconfig
+          sudo sed -i "s/-4k/-dkjsks-ShiftPorts/g" ./common/arch/arm64/configs/gki_defconfig
           sed -i 's/${scm_version}//' ./common/scripts/setlocalversion
           echo "CONFIG_LOCALVERSION_AUTO=n" >> ./common/arch/arm64/configs/gki_defconfig
 
@@ -1003,8 +1018,8 @@ jobs:
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
             wget https://raw.githubusercontent.com/$GITHUB_REPOSITORY/refs/heads/$GITHUB_REF_NAME/zram.zip || true
           fi
-          AK3_NAME=AnyKernel3_${KSU_TYPENAME}_${{ env.KSUVER }}_${{ env.KERNEL_FULL_VERSION }}_palaziks-ShiftPorts.zip
-          FULL_VERSION=${{ env.KERNEL_FULL_VERSION }}-palaziks-ShiftPorts
+          AK3_NAME=AnyKernel3_${KSU_TYPENAME}_${{ env.KSUVER }}_${{ env.KERNEL_FULL_VERSION }}_dkjsks-ShiftPorts.zip
+          FULL_VERSION=${{ env.KERNEL_FULL_VERSION }}-dkjsks-ShiftPorts
           zip -r ../$AK3_NAME ./*
           echo "ak3name=$AK3_NAME" >> $GITHUB_OUTPUT
 
@@ -1076,7 +1091,7 @@ jobs:
           export TG_KERNEL_VERSION="${{ env.KERNEL_FULL_VERSION }}"
           export TG_KSU_DISPLAY="${{ inputs.ksu_type }}"
           export TG_KSUVER="${{ env.KSUVER }}"
-          export TG_SUFFIX="palaziks-ShiftPorts"
+          export TG_SUFFIX="dkjsks-ShiftPorts"
           export TG_LTO="${{ github.event.inputs.lto_type }}"
           export TG_BUILD_NUM="${{ github.run_number }}"
           export TG_TIME_NOW="$TIME_NOW"
@@ -1117,7 +1132,7 @@ jobs:
               return {"tag": "li", "children": [f"{icon} {name}"]}
 
           content = [
-              {"tag": "h3", "children": ["OnePlus 13 (PJZ110) — palaziks kernel"]},
+              {"tag": "h3", "children": ["OnePlus 13 (PJZ110) — dkjsks kernel"]},
               {"tag": "hr"},
               {"tag": "h4", "children": ["📋 Build Info"]},
               {"tag": "ul", "children": [
@@ -1172,13 +1187,13 @@ jobs:
                   "  |  ",
                   {"tag": "a", "attrs": {"href": f"https://github.com/{e('TG_REPO')}"}, "children": [f"📦 {e('TG_REPO')}"]},
               ]},
-              {"tag": "p", "children": ["Built by @palaziks"]},
+              {"tag": "p", "children": ["Built by @dkjsks"]},
           ]
 
           data = {
               "access_token": os.environ.get("TELEGRAPH_TOKEN", ""),
-              "title": f"palaziks kernel — OP13 {e('TG_KERNEL_VERSION')}-{e('TG_SUFFIX')} #{e('TG_BUILD_NUM')}",
-              "author_name": "palaziks",
+              "title": f"dkjsks kernel — OP13 {e('TG_KERNEL_VERSION')}-{e('TG_SUFFIX')} #{e('TG_BUILD_NUM')}",
+              "author_name": "dkjsks",
               "author_url": f"https://github.com/{e('TG_REPO')}",
               "content": json.dumps(content),
               "return_content": "false"
@@ -1269,7 +1284,7 @@ jobs:
 
       - name: Set Environment Variables
         run: |
-          FULL_VERSION=${{ env.KERNEL_FULL_VERSION }}-palaziks-ShiftPorts
+          FULL_VERSION=${{ env.KERNEL_FULL_VERSION }}-dkjsks-ShiftPorts
           echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
           TIME="$(TZ='Asia/Shanghai' date +'%y%m%d%H%M%S')"
           TIME_FORM="$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"

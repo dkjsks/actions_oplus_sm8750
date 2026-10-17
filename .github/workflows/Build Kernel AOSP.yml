@@ -10,7 +10,7 @@ env:
   ANDROID_VERSION: 'android15'
   KERNEL_VERSION: '6.6'
   KERNEL_NAME: 'android15-8-g29d86c5fc9dd-abogki428889875-4k'
-  KERNEL_FULL_VERSION: '6.6.143'
+  KERNEL_FULL_VERSION: '6.6.144'
   KBUILD_BUILD_USER: dkjsks
   KBUILD_BUILD_HOST: Dorothy
 
@@ -324,9 +324,8 @@ jobs:
         if: inputs.ksu_type == 'ReSukiSU'
         run: |
           cd kernel_workspace/common
-          echo "🛠️ Setting up ReSukiSU (dkjsks fork)..."
-          git clone https://github.com/dkjsks/ReSukiSU.git KernelSU
-          curl -LSs "https://raw.githubusercontent.com/dkjsks/ReSukiSU/main/kernel/setup.sh" | bash -s main
+          echo "🛠️ Setting up ReSukiSU (main)..."
+          curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash -s main
           cd KernelSU
           KSU_VERSION_COUNT=$(git rev-list --count HEAD)
           export KSUVER=$(expr $KSU_VERSION_COUNT + 37185)
